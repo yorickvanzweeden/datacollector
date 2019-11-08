@@ -29,6 +29,7 @@ import com.streamsets.pipeline.stage.common.ErrorRecordHandler;
 import com.streamsets.pipeline.stage.processor.tensorflow.typesupport.TensorDataTypeSupport;
 import com.streamsets.pipeline.stage.processor.tensorflow.typesupport.TensorTypeSupporter;
 import org.apache.commons.lang3.tuple.Pair;
+import org.tensorflow.DataType;
 import org.tensorflow.SavedModelBundle;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
@@ -259,8 +260,24 @@ public final class TensorFlowProcessor extends SingleLaneProcessor {
     for (TensorInputConfig inputConfig : inputConfigs) {
       Pair<String, Integer> key = Pair.of(inputConfig.operation, inputConfig.index);
       long[] inputSize = (conf.useEntireBatch)?
-          new long[]{1, numberOfRecords, inputConfig.fields.size()}
-          : new long[]{numberOfRecords, inputConfig.fields.size()};
+          new long[]{1, numberOfRecords, inputConfig.fields.size(), 1}
+          : new long[]{numberOfRecords, inputConfig.fields.size(), 1};
+
+      if (inputConfig.tensorDataType == DataType.STRING) {
+        inputSize[inputSize.length - 1] = 0;
+        for (String fieldName : inputConfig.fields) {
+          if (r.has(fieldName)) {
+            inputSize[inputSize.length - 1] += r.get(fieldName).getValueAsString().getBytes().length;
+          } else {
+            // the field does not exist.
+            throw new OnRecordErrorException(r,
+                    Errors.TENSOR_FLOW_03,
+                    r.getHeader().getSourceId(),
+                    fieldName
+            );
+          }
+        }
+      }
 
       TensorDataTypeSupport dtSupport = TensorTypeSupporter.INSTANCE.getTensorDataTypeSupport(inputConfig.tensorDataType);
       Buffer b = inputBuffer.computeIfAbsent(

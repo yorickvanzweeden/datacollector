@@ -17,6 +17,7 @@ package com.streamsets.pipeline.stage.processor.tensorflow.typesupport;
 
 import com.streamsets.pipeline.api.Field;
 import com.streamsets.pipeline.api.impl.Utils;
+
 import org.tensorflow.DataType;
 import org.tensorflow.Tensor;
 
@@ -26,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 final class StringTensorTypeSupport extends AbstractTensorDataTypeSupport<ByteBuffer, String> {
+
   @Override
   public ByteBuffer allocateBuffer(long[] shape) {
     return ByteBuffer.allocate(calculateCapacityForShape(shape));
@@ -34,22 +36,23 @@ final class StringTensorTypeSupport extends AbstractTensorDataTypeSupport<ByteBu
   @Override
   public Tensor<String> createTensor(long[] shape, ByteBuffer buffer) {
     byte[][] b = new byte[][] { buffer.array() };
-    return (Tensor<String>)Tensor.create(b, String.class);
+    return Tensor.create(b, String.class);
   }
 
   @Override
   public void writeField(ByteBuffer buffer, Field field) {
     Utils.checkState(field.getType() == Field.Type.STRING, "Not a String scalar");
-    buffer = ByteBuffer.wrap(field.getValueAsString().getBytes(StandardCharsets.UTF_8));
+    buffer.put(field.getValueAsString().getBytes(StandardCharsets.UTF_8));
   }
 
   @Override
   public List<Field> createListField(Tensor<String> tensor, ByteBuffer stringBuffer) {
-    List<Field> fields = new ArrayList<>();
     tensor.writeTo(stringBuffer);
     byte[] bytes = stringBuffer.array();
-    fields.add(Field.create(new String(bytes, StandardCharsets.UTF_8)));
-    return fields;
+    // Marker between strings would be unknown, thus output one combined string.
+    return new ArrayList<Field>() {{
+      add(Field.create(new String(bytes, StandardCharsets.UTF_8)));
+    }};
   }
 
   @Override
