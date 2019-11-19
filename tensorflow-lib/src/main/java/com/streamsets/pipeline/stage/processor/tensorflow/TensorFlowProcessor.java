@@ -37,6 +37,7 @@ import org.tensorflow.TensorFlowException;
 
 import java.io.File;
 import java.nio.Buffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -267,7 +268,7 @@ public final class TensorFlowProcessor extends SingleLaneProcessor {
         inputSize[inputSize.length - 1] = 0;
         for (String fieldName : inputConfig.fields) {
           if (r.has(fieldName)) {
-            inputSize[inputSize.length - 1] += r.get(fieldName).getValueAsString().getBytes().length;
+            inputSize[inputSize.length - 1] += r.get(fieldName).getValueAsString().getBytes(StandardCharsets.UTF_8).length;
           } else {
             // the field does not exist.
             throw new OnRecordErrorException(r,
